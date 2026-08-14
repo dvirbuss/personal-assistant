@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Personal Assistant</title>
+    <link rel="stylesheet" href="/static/styles.css?v=4">
+    <link rel="stylesheet" href="/static/tool2.css?v=4">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background">
+        <div class="glow-orb red"></div>
+        <div class="glow-orb blue"></div>
+        <div class="glow-orb purple"></div>
+    </div>
+
+    <div class="container glass-panel">
+        <header>
+            <h1>Personal Assistant <span class="badge">v1.0</span></h1>
+            <p>Select a tool to begin.</p>
+        </header>
+
+        <div class="tool-selector">
+            <button class="tool-btn active" data-tool="video-processor">
+                <span class="icon">🎥</span>
+                Video Frames
+            </button>
+            <button class="tool-btn" data-tool="tool-2">
+                <span class="icon">✏️</span>
+                Annotation
+            </button>
+            <button class="tool-btn" data-tool="tool-3">
+                <span class="icon">🧠</span>
+                Training
+            </button>
+            <button class="tool-btn" data-tool="tool-4">
+                <span class="icon">📊</span>
+                Evaluation
+            </button>
+        </div>
+
+        <main class="tool-content active" id="video-processor">
+            <h2>Video Frame Extractor</h2>
+            <p>Upload a video to automatically extract one frame per second.</p>
+            
+            <div class="drop-zone" id="drop-zone">
+                <div class="drop-zone-content">
+                    <div class="upload-icon">⬆️</div>
+                    <p>Drag & Drop your video or ZIP here</p>
+                    <p class="sub-text">or</p>
+                    <button class="browse-btn" onclick="document.getElementById('file-input').click()">Browse Files</button>
+                    <input type="file" id="file-input" accept="video/*,.zip" multiple hidden>
+                </div>
+            </div>
+            
+            <div id="file-list" class="file-list hidden"></div>
+            <button id="generate-btn" class="generate-btn">Generate Frames</button>
+            <div class="loading-state hidden" id="loading-state">
+                <p id="processing-text">Processing Video...</p>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                </div>
+                <p id="progress-text" class="progress-text">0%</p>
+            </div>
+            
+            <div id="result-message" class="message hidden"></div>
+        </main>
+
+        <main class="tool-content" id="tool-2">
+            <h2>Pose Annotation Tool</h2>
+            
+            <div id="tool2-setup">
+                <div class="setup-layout">
+                    <div class="model-selection-panel">
+                        <h3>1. Choose Model</h3>
+                        <p>Select the pose estimation model to use.</p>
+                        <div class="custom-select-wrapper">
+                            <label for="tool2-model-select">Available Models</label>
+                            <select id="tool2-model-select" class="dropdown modern-select">
+                                <option value="yolov8n-pose.pt" style="color: black;">yolov8n-pose.pt</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="upload-container" id="tool2-drop-zone">
+                        <div class="upload-icon">📁</div>
+                        <h3>2. Upload Frames</h3>
+                        <p>Click below to choose a folder containing your images</p>
+                        <input type="file" id="tool2-folder-input" webkitdirectory directory multiple class="hidden">
+                        <button class="browse-btn" onclick="document.getElementById('tool2-folder-input').click()">Browse Folder</button>
+                        
+                        <p id="tool2-folder-status" style="font-size: 0.9rem; margin-top: 10px;"></p>
+                    </div>
+                </div>
+                
+                <div id="tool2-loading" class="loading-state hidden">
+                    <p id="tool2-processing-text">Running YOLOv8 Pose Estimation...</p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="tool2-progress-fill"></div>
+                    </div>
+                    <p id="tool2-progress-text" class="progress-text">0%</p>
+                </div>
+            </div>
+
+            <div id="tool2-workspace" class="hidden">
+                <div class="workspace-toolbar">
+                    <div class="nav-controls">
+                        <button id="btn-prev-frame" class="nav-btn">◀ Prev Image</button>
+                        <span id="frame-indicator">Frame 1 / 1</span>
+                        <button id="btn-next-frame" class="nav-btn">Next Image ▶</button>
+                    </div>
+                    <div class="action-controls">
+                        <button id="btn-copy-prev" class="nav-btn" style="background: rgba(139, 92, 246, 0.3); border-color: #8b5cf6;" title="Shortcut: Ctrl+K">📋 Copy from Prev (Ctrl+K)</button>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 20px; align-items: flex-start;">
+                    <div class="canvas-container" style="flex: 3;">
+                        <canvas id="annotation-canvas"></canvas>
+                    </div>
+                    
+                    <div class="sidebar-container" style="flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; max-height: 65vh; overflow-y: auto;">
+                        <h4 style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">Keypoints Visibility</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">Click to toggle visibility (Occluded/Visible).</p>
+                        <ul id="keypoint-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="export-controls" style="margin-top: 20px; display: flex; gap: 15px; justify-content: center;">
+                    <button id="btn-export-coco" class="generate-btn" style="flex: 1;">Export COCO JSON</button>
+                    <button id="btn-export-gt" class="generate-btn" style="flex: 1; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Export YOLO GT (ZIP)</button>
+                </div>
+                
+                <p id="tool2-export-message" class="message hidden" style="margin-top: 15px;"></p>
+            </div>
+        </main>
+
+        <main class="tool-content" id="tool-3">
+            <h2>Model Training</h2>
+            <p>Fine-tune a YOLOv8 pose model using your annotated COCO dataset.</p>
+            
+            <div class="setup-layout">
+                <div class="model-selection-panel">
+                    <h3>1. Configuration</h3>
+                    
+                    <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
+                        <label for="tool3-model-select">Base Model</label>
+                        <select id="tool3-model-select" class="dropdown modern-select">
+                            <option value="yolov8n-pose.pt" style="color: black;">yolov8n-pose.pt</option>
+                        </select>
+                    </div>
+
+                    <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
+                        <label for="tool3-epochs">Epochs</label>
+                        <input type="number" id="tool3-epochs" value="50" min="1" max="1000" class="modern-input" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;">
+                    </div>
+                    
+                    <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
+                        <label for="tool3-new-model-name">Save As (Filename)</label>
+                        <input type="text" id="tool3-new-model-name" value="my_custom_model.pt" class="modern-input" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;">
+                    </div>
+                </div>
+                
+                <div class="upload-container" id="tool3-drop-zone">
+                    <div class="upload-icon">📁</div>
+                    <h3>2. Upload Dataset</h3>
+                    <p>Select your COCO JSON file</p>
+                    <input type="file" id="tool3-json-input" accept=".json" class="hidden">
+                    <button class="browse-btn" style="margin-bottom: 10px;" onclick="document.getElementById('tool3-json-input').click()">Browse JSON</button>
+                    <p id="tool3-json-status" style="font-size: 0.9rem; margin-bottom: 10px;"></p>
+                    
+                    <p>Select your Images Folder</p>
+                    <input type="file" id="tool3-folder-input" webkitdirectory directory multiple class="hidden">
+                    <button class="browse-btn" onclick="document.getElementById('tool3-folder-input').click()">Browse Images</button>
+                    <p id="tool3-folder-status" style="font-size: 0.9rem; margin-top: 10px;"></p>
+                </div>
+            </div>
+            
+            <button id="btn-start-training" class="generate-btn" style="margin-top: 2rem; width: 100%;" disabled>Start Training</button>
+            
+            <div id="tool3-loading" class="loading-state hidden">
+                <p id="tool3-processing-text">Preparing Dataset & Training (This may take a while)...</p>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="tool3-progress-fill"></div>
+                </div>
+                <p id="tool3-progress-text" class="progress-text">0%</p>
+            </div>
+            <div id="tool3-result-message" class="message hidden"></div>
+        </main>
+
+
+        <main class="tool-content" id="tool-4">
+            <h2>Model Evaluation</h2>
+            <p>Test your trained models on new images to see their performance.</p>
+            
+            <div class="setup-layout">
+                <div class="model-selection-panel">
+                    <h3>1. Select Models</h3>
+                    <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
+                        <label for="tool4-model-a-select">Model A (Baseline)</label>
+                        <select id="tool4-model-a-select" class="dropdown modern-select">
+                            <option value="yolov8n-pose.pt" style="color: black;">yolov8n-pose.pt</option>
+                        </select>
+                    </div>
+                    <div class="custom-select-wrapper">
+                        <label for="tool4-model-b-select">Model B (To Compare)</label>
+                        <select id="tool4-model-b-select" class="dropdown modern-select">
+                            <option value="yolov8n-pose.pt" style="color: black;">yolov8n-pose.pt</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="upload-container" id="tool4-drop-zone">
+                    <div class="upload-icon">🖼️</div>
+                    <h3>2. Upload Validation Dataset</h3>
+                    <p>Select a GT Dataset ZIP (images + labels)</p>
+                    <input type="file" id="tool4-images-input" accept=".zip" class="hidden">
+                    <button class="browse-btn" onclick="document.getElementById('tool4-images-input').click()">Browse ZIP</button>
+                    <p id="tool4-images-status" style="font-size: 0.9rem; margin-top: 10px;"></p>
+                </div>
+            </div>
+
+            <button id="btn-start-evaluation" class="generate-btn" style="margin-top: 2rem; width: 100%;" disabled>Run Evaluation</button>
+            
+            <div id="tool4-loading" class="loading-state hidden" style="margin-top: 2rem;">
+                <p>Running Inference...</p>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div id="tool4-results-container" class="hidden" style="margin-top: 2rem;">
+                <h3>Evaluation Results (mAP50-95)</h3>
+                
+                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                    <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border); text-align: center;">
+                        <h4 id="score-model-a-name" style="margin-bottom: 8px; color: var(--text-muted);">Model A</h4>
+                        <div id="score-model-a-val" style="font-size: 2rem; font-weight: 800; color: var(--primary);">0.000</div>
+                    </div>
+                    <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border); text-align: center;">
+                        <h4 id="score-model-b-name" style="margin-bottom: 8px; color: var(--text-muted);">Model B</h4>
+                        <div id="score-model-b-val" style="font-size: 2rem; font-weight: 800; color: var(--accent-purple);">0.000</div>
+                    </div>
+                </div>
+
+                <div class="workspace-toolbar">
+                    <div class="nav-controls">
+                        <button id="btn-eval-prev" class="nav-btn">◀ Prev Image</button>
+                        <span id="eval-indicator">Image 1 / 1</span>
+                        <button id="btn-eval-next" class="nav-btn">Next Image ▶</button>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 20px; align-items: center; justify-content: center;">
+                    <div class="canvas-container" style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <p style="margin-bottom: 8px; font-weight: 600;">Model A Prediction</p>
+                        <img id="eval-image-a" style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                    </div>
+                    <div class="canvas-container" style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                        <p style="margin-bottom: 8px; font-weight: 600;">Model B Prediction</p>
+                        <img id="eval-image-b" style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js?v=4"></script>
+    <script src="/static/tool2.js?v=4"></script>
+    <script src="/static/tool3.js?v=4"></script>
+    <script src="/static/tool4.js?v=4"></script>
+</body>
+</html>
