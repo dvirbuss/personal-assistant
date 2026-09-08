@@ -1,0 +1,8 @@
+kpt_shape:
+- 17
+- 3
+names:
+  0: person
+path: C:\Users\dvirbuss\PycharmProjects\label_system\temp\5de412fc-aec3-49c3-b2b8-bbe115e31982\mock_val_dataset
+train: images
+val: images

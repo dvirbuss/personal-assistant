@@ -40,7 +40,10 @@ def process_poses_background(job_id: str, temp_dir: str, file_info_list: list, m
                 except ImportError:
                     device = 'cpu'
                     
-                results = model_pose(image_path, verbose=False, device=device)
+                kwargs = {"verbose": False, "device": device}
+                if "1_det" in model_name:
+                    kwargs["max_det"] = 1
+                results = model_pose(image_path, **kwargs)
                 keypoints_data = []
                 if len(results) > 0 and results[0].keypoints is not None:
                     kpts = results[0].keypoints.data[0].cpu().numpy()

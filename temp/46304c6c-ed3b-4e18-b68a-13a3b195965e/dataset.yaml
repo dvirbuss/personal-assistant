@@ -1,0 +1,8 @@
+kpt_shape:
+- 17
+- 3
+names:
+  0: person
+path: C:\Users\dvirbuss\PycharmProjects\label_system\temp\46304c6c-ed3b-4e18-b68a-13a3b195965e
+train: images
+val: images

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Personal Assistant</title>
-    <link rel="stylesheet" href="/static/styles.css?v=4">
-    <link rel="stylesheet" href="/static/tool2.css?v=4">
+    <link rel="stylesheet" href="/static/styles.css?v=5">
+    <link rel="stylesheet" href="/static/tool2.css?v=5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -31,6 +31,10 @@
             <button class="tool-btn" data-tool="tool-2">
                 <span class="icon">✏️</span>
                 Annotation
+            </button>
+            <button class="tool-btn" data-tool="tool-merge">
+                <span class="icon">🔀</span>
+                JSON Merge
             </button>
             <button class="tool-btn" data-tool="tool-3">
                 <span class="icon">🧠</span>
@@ -85,7 +89,7 @@
                         </div>
                     </div>
                     
-                    <div class="upload-container" id="tool2-drop-zone">
+                    <div class="drop-zone upload-container" id="tool2-drop-zone">
                         <div class="upload-icon">📁</div>
                         <h3>2. Upload Frames</h3>
                         <p>Click below to choose a folder containing your images</p>
@@ -94,6 +98,8 @@
                         
                         <p id="tool2-folder-status" style="font-size: 0.9rem; margin-top: 10px;"></p>
                     </div>
+                    
+                    <button id="btn-tool2-generate-annotations" class="generate-btn" style="margin-top: 20px; width: 100%; border: none;">⚡ Generate Annotations</button>
                 </div>
                 
                 <div id="tool2-loading" class="loading-state hidden">
@@ -118,25 +124,156 @@
                 </div>
                 
                 <div style="display: flex; gap: 20px; align-items: flex-start;">
-                    <div class="canvas-container" style="flex: 3;">
+                    <div class="canvas-container" style="flex: 1; min-width: 0;">
                         <canvas id="annotation-canvas"></canvas>
                     </div>
                     
-                    <div class="sidebar-container" style="flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; max-height: 65vh; overflow-y: auto;">
-                        <h4 style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">Keypoints Visibility</h4>
-                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 15px;">Click to toggle visibility (Occluded/Visible).</p>
-                        <ul id="keypoint-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
+                    <div class="sidebar-container" style="width: 240px; flex-shrink: 0; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px 12px; max-height: 65vh; overflow-y: auto; box-sizing: border-box;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 10px;">
+                            <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); white-space: nowrap;">Keypoints Visibility</h4>
+                        </div>
+                        <ul id="keypoint-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; width: 100%; box-sizing: border-box;">
                             <!-- Populated by JS -->
                         </ul>
                     </div>
                 </div>
                 
                 <div class="export-controls" style="margin-top: 20px; display: flex; gap: 15px; justify-content: center;">
-                    <button id="btn-export-coco" class="generate-btn" style="flex: 1;">Export COCO JSON</button>
-                    <button id="btn-export-gt" class="generate-btn" style="flex: 1; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Export YOLO GT (ZIP)</button>
+                    <button id="btn-export-training" class="generate-btn" style="flex: 1;">Export Training Dataset (ZIP)</button>
+                    <button id="btn-export-evaluation" class="generate-btn" style="flex: 1; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Export Evaluation Dataset (ZIP)</button>
+                    <button id="btn-export-annotated-images" class="generate-btn" style="flex: 1; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);">Download Annotated Images (ZIP)</button>
                 </div>
                 
                 <p id="tool2-export-message" class="message hidden" style="margin-top: 15px;"></p>
+            </div>
+        </main>
+
+        <main class="tool-content" id="tool-merge">
+            <h2>Dataset & JSON Merge Tool</h2>
+            <p>Combine your tuned model's existing dataset with newly annotated image batches into a unified dataset ready for training.</p>
+            
+            <div class="setup-layout" style="grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch;">
+                <!-- 1. Base Dataset Card -->
+                <div class="model-selection-panel" style="display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <h3 style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                            <span>📦</span> 1. Base Dataset (Tuned Model)
+                        </h3>
+                        <span id="merge-base-badge" class="status-chip neutral">Waiting for Upload</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                        Upload the folder or ZIP containing existing images & annotations.json
+                    </p>
+                    
+                    <div class="drop-zone upload-container" id="merge-base-drop-zone" style="flex: 1; min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; border-style: dashed; padding: 20px;">
+                        <div class="upload-icon" style="font-size: 2.2rem; margin-bottom: 8px;">📁</div>
+                        <p style="font-weight: 600; margin-bottom: 4px;">Drag & Drop Base Folder or ZIP</p>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">or choose an option below</p>
+                        
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                            <input type="file" id="merge-base-folder-input" webkitdirectory directory multiple class="hidden">
+                            <button type="button" class="browse-btn" onclick="document.getElementById('merge-base-folder-input').click()" style="padding: 0.6rem 1rem; font-size: 0.85rem;">📁 Browse Folder</button>
+                            
+                            <input type="file" id="merge-base-zip-input" accept=".zip" class="hidden">
+                            <button type="button" class="browse-btn" onclick="document.getElementById('merge-base-zip-input').click()" style="padding: 0.6rem 1rem; font-size: 0.85rem; background: rgba(255,255,255,0.08);">🗜️ Browse ZIP</button>
+                        </div>
+                        
+                        <p id="merge-base-status" style="font-size: 0.85rem; margin-top: 12px; font-weight: 500;"></p>
+                    </div>
+                </div>
+
+                <!-- 2. New Batch Dataset Card -->
+                <div class="model-selection-panel" style="display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <h3 style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+                            <span>➕</span> 2. New Annotated Batch
+                        </h3>
+                        <span id="merge-new-badge" class="status-chip neutral">Waiting for Upload</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                        Upload the folder or ZIP of newly annotated images (e.g. +50 images)
+                    </p>
+                    
+                    <div class="drop-zone upload-container" id="merge-new-drop-zone" style="flex: 1; min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; border-style: dashed; padding: 20px;">
+                        <div class="upload-icon" style="font-size: 2.2rem; margin-bottom: 8px;">✨</div>
+                        <p style="font-weight: 600; margin-bottom: 4px;">Drag & Drop New Batch Folder or ZIP</p>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">or choose an option below</p>
+                        
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                            <input type="file" id="merge-new-folder-input" webkitdirectory directory multiple class="hidden">
+                            <button type="button" class="browse-btn" onclick="document.getElementById('merge-new-folder-input').click()" style="padding: 0.6rem 1rem; font-size: 0.85rem;">📁 Browse Folder</button>
+                            
+                            <input type="file" id="merge-new-zip-input" accept=".zip" class="hidden">
+                            <button type="button" class="browse-btn" onclick="document.getElementById('merge-new-zip-input').click()" style="padding: 0.6rem 1rem; font-size: 0.85rem; background: rgba(255,255,255,0.08);">🗜️ Browse ZIP</button>
+                        </div>
+                        
+                        <p id="merge-new-status" style="font-size: 0.85rem; margin-top: 12px; font-weight: 500;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Merge Trigger -->
+            <button id="btn-merge-datasets" class="generate-btn" style="margin-top: 25px; width: 100%; font-size: 1.05rem; padding: 1rem; border: none;" disabled>
+                ⚡ Generate Merged Dataset
+            </button>
+
+            <!-- Loading State -->
+            <div id="merge-loading" class="loading-state hidden" style="margin-top: 25px;">
+                <p id="merge-processing-text">Preparing datasets for merge...</p>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="merge-progress-fill"></div>
+                </div>
+                <p id="merge-progress-text" class="progress-text">0%</p>
+            </div>
+
+            <div id="merge-result-message" class="message hidden" style="margin-top: 20px;"></div>
+
+            <!-- Merge Results Card -->
+            <div id="merge-result-panel" class="hidden" style="margin-top: 30px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 25px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h3 style="margin: 0; color: #10b981; font-size: 1.3rem; display: flex; align-items: center; gap: 8px;">
+                            <span>✅</span> Datasets Successfully Merged!
+                        </h3>
+                        <p style="margin: 4px 0 0 0; color: var(--text-muted); font-size: 0.9rem;">
+                            All images have been combined, IDs re-indexed sequentially, and duplicate filenames resolved.
+                        </p>
+                    </div>
+                    <span id="stat-zip-size" style="background: rgba(255,255,255,0.1); padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; color: #e5e7eb;">
+                        0 MB
+                    </span>
+                </div>
+
+                <!-- Stats Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">Base Dataset</span>
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #fff; margin-top: 4px;"><span id="stat-base-imgs">0</span> <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-muted);">images</span></div>
+                        <div style="font-size: 0.85rem; color: #9ca3af; margin-top: 2px;"><span id="stat-base-annots">0</span> annotations</div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.25); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em;">New Batch</span>
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #a78bfa; margin-top: 4px;">+<span id="stat-new-imgs">0</span> <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-muted);">images</span></div>
+                        <div style="font-size: 0.85rem; color: #9ca3af; margin-top: 2px;">+<span id="stat-new-annots">0</span> annotations</div>
+                    </div>
+
+                    <div style="background: rgba(16, 185, 129, 0.15); padding: 15px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.4);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; color: #34d399; letter-spacing: 0.05em; font-weight: 700;">Total Merged</span>
+                        <div style="font-size: 1.4rem; font-weight: 800; color: #10b981; margin-top: 4px;"><span id="stat-total-imgs">0</span> <span style="font-size: 0.85rem; font-weight: 400; color: #6ee7b7;">images</span></div>
+                        <div style="font-size: 0.85rem; color: #a7f3d0; margin-top: 2px;"><span id="stat-total-annots">0</span> annotations</div>
+                    </div>
+                </div>
+
+                <!-- Export & Action Buttons -->
+                <div style="display: flex; gap: 15px; justify-content: flex-end; flex-wrap: wrap;">
+                    <button id="btn-goto-training" class="generate-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); flex: 1; min-width: 200px;">
+                        🧠 Proceed to Model Training
+                    </button>
+                    <button id="btn-download-merged" class="generate-btn" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); flex: 1; min-width: 200px;">
+                        📥 Download Merged Dataset (ZIP)
+                    </button>
+                </div>
             </div>
         </main>
 
@@ -157,7 +294,34 @@
 
                     <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
                         <label for="tool3-epochs">Epochs</label>
-                        <input type="number" id="tool3-epochs" value="50" min="1" max="1000" class="modern-input" style="width: 100%; padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 8px;">
+                        <select id="tool3-epochs" class="dropdown modern-select">
+                            <option value="20" style="color: black;">20</option>
+                            <option value="30" style="color: black;">30</option>
+                            <option value="50" style="color: black;" selected>50</option>
+                        </select>
+                    </div>
+
+                    <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
+                        <label for="tool3-lr0">Initial Learning Rate (lr0)</label>
+                        <select id="tool3-lr0" class="dropdown modern-select">
+                            <option value="0.01" style="color: black;" selected>0.01</option>
+                            <option value="0.001" style="color: black;">0.001</option>
+                            <option value="0.0001" style="color: black;">0.0001</option>
+                        </select>
+                    </div>
+
+                    <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
+                        <label for="tool3-pose">Pose Loss Gain</label>
+                        <select id="tool3-pose" class="dropdown modern-select">
+                            <option value="12.0" style="color: black;" selected>12.0 (default)</option>
+                            <option value="6.0" style="color: black;">6.0</option>
+                            <option value="24.0" style="color: black;">24.0</option>
+                        </select>
+                    </div>
+
+                    <div class="custom-select-wrapper" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="tool3-use-optuna" style="width: 20px; height: 20px; cursor: pointer;">
+                        <label for="tool3-use-optuna" style="margin: 0; cursor: pointer; user-select: none;">Use Optuna Tuning</label>
                     </div>
                     
                     <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
@@ -166,18 +330,18 @@
                     </div>
                 </div>
                 
-                <div class="upload-container" id="tool3-drop-zone">
-                    <div class="upload-icon">📁</div>
-                    <h3>2. Upload Dataset</h3>
-                    <p>Select your COCO JSON file</p>
-                    <input type="file" id="tool3-json-input" accept=".json" class="hidden">
-                    <button class="browse-btn" style="margin-bottom: 10px;" onclick="document.getElementById('tool3-json-input').click()">Browse JSON</button>
-                    <p id="tool3-json-status" style="font-size: 0.9rem; margin-bottom: 10px;"></p>
-                    
-                    <p>Select your Images Folder</p>
-                    <input type="file" id="tool3-folder-input" webkitdirectory directory multiple class="hidden">
-                    <button class="browse-btn" onclick="document.getElementById('tool3-folder-input').click()">Browse Images</button>
-                    <p id="tool3-folder-status" style="font-size: 0.9rem; margin-top: 10px;"></p>
+                <div class="drop-zone upload-container" id="tool3-drop-zone" style="padding: 1.5rem; min-height: 180px;">
+                    <div class="upload-icon" style="font-size: 2rem; margin-bottom: 8px;">📁</div>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 6px;">2. Upload Dataset Folder</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Select the root 'dataset/' directory</p>
+                    <pre style="margin-bottom: 15px; color: #9ca3af; font-size: 0.85rem; text-align: left; display: inline-block; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; font-family: monospace; line-height: 1.3; width: 80%; max-width: 320px; box-sizing: border-box; margin-left: auto; margin-right: auto; border: none; font-weight: normal; margin-top: 10px;"><strong>Expected Structure:</strong>
+DatasetFolder/
+├── annotations.json
+└── images/
+    └── image_i.jpg</pre>
+                    <input type="file" id="tool3-dataset-input" webkitdirectory directory multiple class="hidden">
+                    <button class="browse-btn" onclick="document.getElementById('tool3-dataset-input').click()">Browse Folder</button>
+                    <p id="tool3-dataset-status" style="font-size: 0.85rem; margin-top: 8px; color: var(--primary);"></p>
                 </div>
             </div>
             
@@ -199,53 +363,49 @@
             <p>Test your trained models on new images to see their performance.</p>
             
             <div class="setup-layout">
-                <div class="model-selection-panel">
+                <div class="model-selection-panel" style="flex: 1;">
                     <h3>1. Select Models</h3>
-                    <div class="custom-select-wrapper" style="margin-bottom: 1rem;">
-                        <label for="tool4-model-a-select">Model A (Baseline)</label>
-                        <select id="tool4-model-a-select" class="dropdown modern-select">
-                            <option value="yolov8n-pose.pt" style="color: black;">yolov8n-pose.pt</option>
-                        </select>
-                    </div>
-                    <div class="custom-select-wrapper">
-                        <label for="tool4-model-b-select">Model B (To Compare)</label>
-                        <select id="tool4-model-b-select" class="dropdown modern-select">
-                            <option value="yolov8n-pose.pt" style="color: black;">yolov8n-pose.pt</option>
-                        </select>
+                    <p style="margin-bottom: 12px; color: var(--text-muted); font-size: 0.9rem;">Click to select models to evaluate (select 1 or more):</p>
+                    <div id="tool4-models-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                        <!-- Dynamically populated model cards -->
                     </div>
                 </div>
                 
-                <div class="upload-container" id="tool4-drop-zone">
+                <div class="drop-zone upload-container" id="tool4-drop-zone">
                     <div class="upload-icon">🖼️</div>
                     <h3>2. Upload Validation Dataset</h3>
-                    <p>Select a GT Dataset ZIP (images + labels)</p>
-                    <input type="file" id="tool4-images-input" accept=".zip" class="hidden">
-                    <button class="browse-btn" onclick="document.getElementById('tool4-images-input').click()">Browse ZIP</button>
+                    <p>Select a validation dataset folder</p>
+                    <pre style="margin-bottom: 15px; color: #9ca3af; font-size: 0.85rem; text-align: left; display: inline-block; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; font-family: monospace; line-height: 1.3; width: 80%; max-width: 320px; box-sizing: border-box; margin-left: auto; margin-right: auto; border: none; font-weight: normal;"><strong>Expected Structure:</strong>
+DatasetFolder/
+├── images/
+│   └── image_i.jpg
+└── labels/
+    └── image_i.txt</pre>
+                    <input type="file" id="tool4-images-input" webkitdirectory directory multiple class="hidden">
+                    <button class="browse-btn" onclick="document.getElementById('tool4-images-input').click()">Browse Folder</button>
                     <p id="tool4-images-status" style="font-size: 0.9rem; margin-top: 10px;"></p>
                 </div>
             </div>
 
             <button id="btn-start-evaluation" class="generate-btn" style="margin-top: 2rem; width: 100%;" disabled>Run Evaluation</button>
-            
             <div id="tool4-loading" class="loading-state hidden" style="margin-top: 2rem;">
-                <p>Running Inference...</p>
+                <p id="tool4-processing-text">Running Inference...</p>
                 <div class="progress-bar-container">
-                    <div class="progress-bar-fill" style="width: 100%;"></div>
+                    <div class="progress-bar-fill" id="tool4-progress-fill" style="width: 0%;"></div>
                 </div>
+                <p id="tool4-progress-text" class="progress-text">0%</p>
             </div>
 
             <div id="tool4-results-container" class="hidden" style="margin-top: 2rem;">
                 <h3>Evaluation Results (mAP50-95)</h3>
                 
-                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
-                    <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border); text-align: center;">
-                        <h4 id="score-model-a-name" style="margin-bottom: 8px; color: var(--text-muted);">Model A</h4>
-                        <div id="score-model-a-val" style="font-size: 2rem; font-weight: 800; color: var(--primary);">0.000</div>
-                    </div>
-                    <div style="flex: 1; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border); text-align: center;">
-                        <h4 id="score-model-b-name" style="margin-bottom: 8px; color: var(--text-muted);">Model B</h4>
-                        <div id="score-model-b-val" style="font-size: 2rem; font-weight: 800; color: var(--accent-purple);">0.000</div>
-                    </div>
+                <div id="tool4-scores-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <!-- Dynamically populated score cards -->
+                </div>
+
+                <div id="eval-table-wrapper" class="hidden" style="margin-bottom: 25px; text-align: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <p style="margin-bottom: 10px; font-weight: 600; color: var(--primary);">Thesis Table (Right-click to copy or save)</p>
+                    <img id="eval-table-image" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);">
                 </div>
 
                 <div class="workspace-toolbar">
@@ -256,23 +416,17 @@
                     </div>
                 </div>
                 
-                <div style="display: flex; gap: 20px; align-items: center; justify-content: center;">
-                    <div class="canvas-container" style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <p style="margin-bottom: 8px; font-weight: 600;">Model A Prediction</p>
-                        <img id="eval-image-a" style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-                    </div>
-                    <div class="canvas-container" style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                        <p style="margin-bottom: 8px; font-weight: 600;">Model B Prediction</p>
-                        <img id="eval-image-b" style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-                    </div>
+                <div id="tool4-predictions-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: center; justify-content: center;">
+                    <!-- Dynamically populated prediction images -->
                 </div>
             </div>
         </main>
     </div>
 
-    <script src="/static/app.js?v=4"></script>
-    <script src="/static/tool2.js?v=4"></script>
-    <script src="/static/tool3.js?v=4"></script>
-    <script src="/static/tool4.js?v=4"></script>
+    <script src="/static/app.js?v=6"></script>
+    <script src="/static/tool2.js?v=17"></script>
+    <script src="/static/tool_merge.js?v=1"></script>
+    <script src="/static/tool3.js?v=7"></script>
+    <script src="/static/tool4.js?v=15"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 import os
 import uuid
 from typing import List
-from fastapi import APIRouter, UploadFile, Form, HTTPException
+from fastapi import APIRouter, UploadFile, Form, HTTPException, File
 from services.training_service import run_training_job
 from core.job_manager import jobs
 
@@ -9,10 +9,13 @@ router = APIRouter()
 
 @router.post("/train")
 async def start_training(
-    json_file: UploadFile,
-    images: List[UploadFile],
+    files: List[UploadFile] = File(...),
+    paths: List[str] = Form(...),
     base_model: str = Form(...),
     epochs: int = Form(...),
+    lr0: float = Form(...),
+    pose: float = Form(...),
+    use_optuna: bool = Form(...),
     new_model_name: str = Form(...)
 ):
     try:
@@ -22,20 +25,31 @@ async def start_training(
         temp_dir = os.path.join("temp", job_id)
         os.makedirs(temp_dir, exist_ok=True)
         
-        # Save JSON
-        json_path = os.path.join(temp_dir, "annotations.json")
-        with open(json_path, "wb") as f:
-            f.write(await json_file.read())
-            
-        # Save images
-        images_dir = os.path.join(temp_dir, "uploaded_images")
-        os.makedirs(images_dir, exist_ok=True)
-        
-        for img_file in images:
-            img_path = os.path.join(images_dir, img_file.filename)
-            with open(img_path, "wb") as f:
-                f.write(await img_file.read())
+        # Reconstruct directory structure
+        print(f"\nSaving {len(files)} dataset files to temporary directory: {temp_dir}...")
+        for file, rel_path in zip(files, paths):
+            clean_rel_path = rel_path.replace('\\', '/')
+            full_path = os.path.join(temp_dir, clean_rel_path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "wb") as f:
+                f.write(await file.read())
                 
+        # Find where annotations.json (or any JSON) and images folder are located
+        json_path = None
+        images_dir = None
+        for root, dirs, filenames in os.walk(temp_dir):
+            for filename in filenames:
+                if filename.endswith('.json'):
+                    json_path = os.path.join(root, filename)
+                    break
+            if "images" in dirs:
+                images_dir = os.path.join(root, "images")
+                
+        if not json_path:
+            raise Exception("Uploaded folder structure must contain a COCO annotations JSON (.json).")
+        if not images_dir:
+            raise Exception("Uploaded folder structure must contain an 'images' directory.")
+            
         # Initialize job
         jobs[job_id] = {
             "status": "processing",
@@ -52,6 +66,9 @@ async def start_training(
             images_dir=images_dir,
             base_model=base_model,
             epochs=epochs,
+            lr0=lr0,
+            pose=pose,
+            use_optuna=use_optuna,
             new_model_name=new_model_name
         )
         

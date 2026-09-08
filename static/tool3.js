@@ -1,12 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const jsonInput = document.getElementById('tool3-json-input');
-    const folderInput = document.getElementById('tool3-folder-input');
-    const jsonStatus = document.getElementById('tool3-json-status');
-    const folderStatus = document.getElementById('tool3-folder-status');
+    const datasetInput = document.getElementById('tool3-dataset-input');
+    const datasetStatus = document.getElementById('tool3-dataset-status');
     const startTrainingBtn = document.getElementById('btn-start-training');
     
-    let selectedJsonFile = null;
-    let selectedImages = [];
+    let selectedDatasetFiles = [];
 
     // Load available models
     fetch('/models')
@@ -24,52 +21,54 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(err => console.error("Error loading models:", err));
 
-    jsonInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            selectedJsonFile = e.target.files[0];
-            jsonStatus.textContent = `Selected: ${selectedJsonFile.name}`;
-            checkReady();
-        }
-    });
-
-    folderInput.addEventListener('change', (e) => {
-        const files = e.target.files;
-        selectedImages = Array.from(files).filter(file => file.type.startsWith('image/'));
-        if (selectedImages.length > 0) {
-            folderStatus.textContent = `Selected ${selectedImages.length} images`;
-            checkReady();
+    datasetInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            selectedDatasetFiles = files;
+            const hasJson = files.some(f => f.name.endsWith('.json'));
+            if (hasJson) {
+                datasetStatus.textContent = `Selected folder with ${files.length} files (.json found)`;
+                datasetStatus.style.color = '#10b981';
+                startTrainingBtn.disabled = false;
+            } else {
+                datasetStatus.textContent = `Error: COCO JSON file (.json) not found in selected directory.`;
+                datasetStatus.style.color = '#ef4444';
+                startTrainingBtn.disabled = true;
+            }
         } else {
-            folderStatus.textContent = "No images found in folder.";
-            selectedImages = [];
-            checkReady();
-        }
-    });
-
-    function checkReady() {
-        if (selectedJsonFile && selectedImages.length > 0) {
-            startTrainingBtn.disabled = false;
-        } else {
+            datasetStatus.textContent = "";
+            selectedDatasetFiles = [];
             startTrainingBtn.disabled = true;
         }
-    }
+    });
 
     startTrainingBtn.addEventListener('click', () => {
         const modelName = document.getElementById('tool3-model-select').value;
         const epochs = document.getElementById('tool3-epochs').value;
+        const lr0 = document.getElementById('tool3-lr0').value;
+        const pose = document.getElementById('tool3-pose').value;
+        const useOptuna = document.getElementById('tool3-use-optuna').checked;
         const newModelName = document.getElementById('tool3-new-model-name').value;
         
         if (!modelName || !newModelName) {
             alert("Please select a base model and provide a name for the new model.");
             return;
         }
+        if (selectedDatasetFiles.length === 0) {
+            alert("Please select a dataset folder to upload.");
+            return;
+        }
 
         const formData = new FormData();
-        formData.append('json_file', selectedJsonFile);
-        selectedImages.forEach(file => {
-            formData.append('images', file);
+        selectedDatasetFiles.forEach(file => {
+            formData.append('files', file);
+            formData.append('paths', file.webkitRelativePath || file.name);
         });
         formData.append('base_model', modelName);
         formData.append('epochs', epochs);
+        formData.append('lr0', lr0);
+        formData.append('pose', pose);
+        formData.append('use_optuna', useOptuna);
         formData.append('new_model_name', newModelName);
 
         const loadingState = document.getElementById('tool3-loading');
@@ -153,5 +152,86 @@ document.addEventListener('DOMContentLoaded', () => {
                     startTrainingBtn.disabled = false;
                 });
         }, 2000); // Check every 2 seconds for training
+    }
+    // Drag & Drop for Dataset Folder
+    const dropZone3 = document.getElementById('tool3-drop-zone');
+
+    async function getFilesFromEntry(entry, path = "") {
+        if (entry.isFile) {
+            return new Promise((resolve) => {
+                entry.file((file) => {
+                    const relPath = path + file.name;
+                    Object.defineProperty(file, 'webkitRelativePath', {
+                        value: relPath,
+                        configurable: true,
+                        enumerable: true,
+                        writable: true
+                    });
+                    resolve([file]);
+                });
+            });
+        } else if (entry.isDirectory) {
+            const dirReader = entry.createReader();
+            return new Promise((resolve) => {
+                dirReader.readEntries(async (entries) => {
+                    const filePromises = entries.map(e => getFilesFromEntry(e, path + entry.name + "/"));
+                    const fileGroups = await Promise.all(filePromises);
+                    resolve(fileGroups.flat());
+                });
+            });
+        }
+        return [];
+    }
+
+    async function getFilesFromItems(items) {
+        const filePromises = items.map(item => {
+            if (item.kind === 'file') {
+                const entry = item.webkitGetAsEntry();
+                if (entry) return getFilesFromEntry(entry);
+            }
+            return Promise.resolve([]);
+        });
+        const fileGroups = await Promise.all(filePromises);
+        return fileGroups.flat();
+    }
+
+    if (dropZone3) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone3.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone3.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone3.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone3.classList.remove('dragover');
+            }, false);
+        });
+
+        dropZone3.addEventListener('drop', async (e) => {
+            const items = Array.from(e.dataTransfer.items);
+            const files = await getFilesFromItems(items);
+            if (files.length > 0) {
+                selectedDatasetFiles = files;
+                const hasJson = files.some(f => f.name.endsWith('.json'));
+                if (hasJson) {
+                    datasetStatus.textContent = `Selected dropped folder with ${files.length} files (.json found)`;
+                    datasetStatus.style.color = '#10b981';
+                    startTrainingBtn.disabled = false;
+                } else {
+                    datasetStatus.textContent = `Error: COCO JSON file (.json) not found in dropped folder.`;
+                    datasetStatus.style.color = '#ef4444';
+                    startTrainingBtn.disabled = true;
+                }
+            } else {
+                datasetStatus.textContent = "No valid files found in dropped folder.";
+                selectedDatasetFiles = [];
+                startTrainingBtn.disabled = true;
+            }
+        });
     }
 });
