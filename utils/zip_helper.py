@@ -22,3 +22,31 @@ def extract_if_zip(file_path: str, output_dir: str):
                 os.rmdir(single_item_path)
         return True
     return False
+
+
+def create_zip_from_directory(source_dir: str, output_zip_path: str, allowed_extensions: tuple = None) -> list:
+    """
+    Packages all files (optionally filtered by allowed_extensions) from source_dir into output_zip_path.
+    Returns a list of dicts with file metadata [{'filename': ..., 'size_mb': ...}].
+    """
+    packaged_files = []
+    with zipfile.ZipFile(output_zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(source_dir):
+            for file in files:
+                if allowed_extensions and not file.lower().endswith(allowed_extensions):
+                    continue
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, source_dir)
+                zipf.write(full_path, arcname=rel_path)
+                packaged_files.append({
+                    "filename": rel_path,
+                    "size_mb": round(os.path.getsize(full_path) / (1024 * 1024), 2)
+                })
+    return packaged_files
+
+
+def get_file_size_mb(file_path: str) -> float:
+    """Returns the size of a file in megabytes rounded to 2 decimal places."""
+    if not os.path.exists(file_path):
+        return 0.0
+    return round(os.path.getsize(file_path) / (1024 * 1024), 2)

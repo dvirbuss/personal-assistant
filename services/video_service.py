@@ -3,7 +3,28 @@ import cv2
 import zipfile
 from core.job_manager import jobs
 
-def process_video_background(job_id: str, temp_dir: str, file_info_list: list, limits_list: list):
+def calculate_frame_step(fps: float, fps_option: int) -> int:
+    """
+    Determines the frame jump step based on video FPS and target FPS option.
+    Matches the user's exact specification:
+      1fps -> 30 jump
+      2fps -> 15 jump
+      3fps -> 10 jump
+      4fps -> 8 jump
+    """
+    step_map = {
+        1: 30,
+        2: 15,
+        3: 10,
+        4: 8
+    }
+    fps_val = int(fps_option) if fps_option else 1
+    if 24 <= fps <= 32 and fps_val in step_map:
+        return step_map[fps_val]
+    return max(1, round(fps / max(1, fps_val)))
+
+
+def process_video_background(job_id: str, temp_dir: str, file_info_list: list, limits_list: list, fps_option: int = 1):
     try:
         frames_dir = os.path.join(temp_dir, "frames")
         os.makedirs(frames_dir, exist_ok=True)
@@ -24,6 +45,8 @@ def process_video_background(job_id: str, temp_dir: str, file_info_list: list, l
                 fps = 30
             fps = max(1, int(fps))
             
+            frame_step = calculate_frame_step(fps, fps_option)
+            
             frame_count = 0
             saved_count = 0
             
@@ -35,7 +58,7 @@ def process_video_background(job_id: str, temp_dir: str, file_info_list: list, l
                 if saved_count >= limit:
                     break
                     
-                if frame_count % fps == 0:
+                if frame_count % frame_step == 0:
                     frame_filename = os.path.join(frames_dir, f"{video_name}_frame_{saved_count:02d}.jpg")
                     cv2.imwrite(frame_filename, frame)
                     saved_count += 1

@@ -15,7 +15,12 @@ from services.video_service import process_video_background
 router = APIRouter()
 
 @router.post("/process_video")
-async def process_video(background_tasks: BackgroundTasks, files: List[UploadFile] = File(...), limits: str = Form(...)):
+async def process_video(
+    background_tasks: BackgroundTasks, 
+    files: List[UploadFile] = File(...), 
+    limits: str = Form(...),
+    fps_option: int = Form(1)
+):
     job_id = str(uuid.uuid4())
     temp_dir = tempfile.mkdtemp()
     
@@ -84,7 +89,7 @@ async def process_video(background_tasks: BackgroundTasks, files: List[UploadFil
         jobs[job_id] = {"status": "error", "error": "No valid videos found."}
         return {"job_id": job_id}
         
-    background_tasks.add_task(process_video_background, job_id, temp_dir, file_info_list, limits_list)
+    background_tasks.add_task(process_video_background, job_id, temp_dir, file_info_list, limits_list, fps_option)
     return {"job_id": job_id}
 
 @router.get("/download/{job_id}")

@@ -157,6 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         formData.append('limits', JSON.stringify(limits));
 
+        const fpsSelect = document.getElementById('fps-select');
+        const fpsOption = fpsSelect ? fpsSelect.value : '1';
+        formData.append('fps_option', fpsOption);
+
         fetch('/process_video', {
             method: 'POST',
             body: formData

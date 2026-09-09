@@ -15,5 +15,7 @@ def get_job_status(job_id: str):
     return {
         "status": jobs[job_id].get("status", "unknown"),
         "progress": jobs[job_id].get("progress", 0),
-        "error": jobs[job_id].get("error")
+        "error": jobs[job_id].get("error"),
+        "status_msg": jobs[job_id].get("status_msg", ""),
+        "results": jobs[job_id].get("results")
     }

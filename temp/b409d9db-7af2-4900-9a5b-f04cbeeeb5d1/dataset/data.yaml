@@ -1,9 +1,0 @@
-kpt_shape:
-- 17
-- 3
-names:
-- person
-nc: 1
-path: C:\Users\dvirbuss\PycharmProjects\label_system\temp\b409d9db-7af2-4900-9a5b-f04cbeeeb5d1\dataset
-train: images/train
-val: images/train

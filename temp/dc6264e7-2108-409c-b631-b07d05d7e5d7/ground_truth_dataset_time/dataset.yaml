@@ -1,8 +1,0 @@
-kpt_shape:
-- 17
-- 3
-names:
-  0: person
-path: C:\Users\dvirbuss\PycharmProjects\label_system\temp\dc6264e7-2108-409c-b631-b07d05d7e5d7\ground_truth_dataset_time
-train: images
-val: images

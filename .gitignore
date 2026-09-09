@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# Temporary runtime working directories & datasets
+temp/
+temp_debug_dataset/
+scratch/
+
+# Media, video & zip artifacts
+*.zip
+*.mp4
+*.mkv
+*.avi
+*.mov
+
+# Logs & system
+*.log
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo

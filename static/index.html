@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Personal Assistant</title>
-    <link rel="stylesheet" href="/static/styles.css?v=5">
+    <link rel="stylesheet" href="/static/styles.css?v=6">
     <link rel="stylesheet" href="/static/tool2.css?v=5">
+    <link rel="stylesheet" href="/static/youtube.css?v=1">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -24,7 +25,11 @@
         </header>
 
         <div class="tool-selector">
-            <button class="tool-btn active" data-tool="video-processor">
+            <button class="tool-btn active" data-tool="youtube-downloader">
+                <span class="icon">📥</span>
+                YouTube Downloader
+            </button>
+            <button class="tool-btn" data-tool="video-processor">
                 <span class="icon">🎥</span>
                 Video Frames
             </button>
@@ -46,10 +51,99 @@
             </button>
         </div>
 
-        <main class="tool-content active" id="video-processor">
+        <main class="tool-content active" id="youtube-downloader">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <h2 style="margin: 0;">YouTube Video & Clip Downloader</h2>
+                <span class="status-chip success" style="font-size: 0.8rem;">⚡ High-Speed Trimming</span>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">
+                Download full videos or precise clips by URL and timestamp. Add multiple clips via the plus button, then package all into a ZIP archive.
+            </p>
+
+            <div class="yt-container">
+                <!-- Clips Dynamic List -->
+                <div id="yt-clips-list" class="yt-clips-list">
+                    <!-- Populated dynamically by youtube.js -->
+                </div>
+
+                <!-- Add Clip Button -->
+                <button type="button" id="btn-add-clip" class="btn-add-clip">
+                    <span style="font-size: 1.2rem;">➕</span> Add Another Video / Clip
+                </button>
+
+                <!-- Download Trigger Button -->
+                <div class="yt-download-bar">
+                    <button type="button" id="btn-yt-download" class="btn-yt-download">
+                        <span>⚡ Download & Package Videos (ZIP)</span>
+                    </button>
+                </div>
+
+                <!-- Loading State -->
+                <div id="yt-loading" class="loading-state hidden" style="margin-top: 20px;">
+                    <p id="yt-processing-text">Preparing download...</p>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="yt-progress-fill" style="background: linear-gradient(90deg, #ef4444, #f59e0b);"></div>
+                    </div>
+                    <p id="yt-progress-text" class="progress-text">0%</p>
+                </div>
+
+                <!-- Result Message -->
+                <div id="yt-result-message" class="message hidden" style="margin-top: 15px;"></div>
+
+                <!-- Results & Download Panel -->
+                <div id="yt-results-panel" class="yt-results-panel hidden">
+                    <div class="yt-results-header">
+                        <div>
+                            <h3 style="margin: 0; color: #10b981; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                                <span>✅</span> Videos Successfully Downloaded!
+                            </h3>
+                            <p style="margin: 4px 0 0 0; color: var(--text-muted); font-size: 0.88rem;">
+                                Your clips have been processed, trimmed, and compressed into a ZIP archive.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="yt-stat-clips-count" style="background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">
+                                0 videos
+                            </span>
+                            <span id="yt-stat-zip-size" style="background: rgba(16,185,129,0.2); color: #34d399; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 700;">
+                                0 MB
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="yt-results-clips-list" class="yt-results-clips-list">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="yt-actions-row">
+                        <button type="button" id="btn-yt-send-to-frames" class="generate-btn" style="flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); margin-top: 0;">
+                            🎥 Open in Video Frames Extractor
+                        </button>
+                        <button type="button" id="btn-yt-download-zip" class="generate-btn" style="flex: 1.2; background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-top: 0;">
+                            📥 Download Videos (ZIP)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <main class="tool-content" id="video-processor">
             <h2>Video Frame Extractor</h2>
-            <p>Upload a video to automatically extract one frame per second.</p>
+            <p>Upload a video to automatically extract frames at your desired rate.</p>
             
+            <div class="custom-select-wrapper" style="margin: 20px 0 15px 0;">
+                <label for="fps-select" style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; text-transform: uppercase; letter-spacing: 0.04em;">
+                    <span>Frame Extraction Rate (FPS)</span>
+                    <span style="font-size: 0.75rem; color: #64748b; font-weight: normal; text-transform: none;">Jump interval</span>
+                </label>
+                <select id="fps-select" class="dropdown modern-select">
+                    <option value="1" style="color: black;" selected>1 FPS — (30 jump)</option>
+                    <option value="2" style="color: black;">2 FPS — (15 jump)</option>
+                    <option value="3" style="color: black;">3 FPS — (10 jump)</option>
+                    <option value="4" style="color: black;">4 FPS — (8 jump)</option>
+                </select>
+            </div>
+
             <div class="drop-zone" id="drop-zone">
                 <div class="drop-zone-content">
                     <div class="upload-icon">⬆️</div>
@@ -424,6 +518,7 @@ DatasetFolder/
     </div>
 
     <script src="/static/app.js?v=6"></script>
+    <script src="/static/youtube.js?v=1"></script>
     <script src="/static/tool2.js?v=17"></script>
     <script src="/static/tool_merge.js?v=1"></script>
     <script src="/static/tool3.js?v=7"></script>

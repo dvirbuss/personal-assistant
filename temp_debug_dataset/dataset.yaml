@@ -1,8 +1,0 @@
-kpt_shape:
-- 17
-- 3
-names:
-  0: person
-path: C:\Users\dvirbuss\PycharmProjects\label_system\temp_debug_dataset
-train: images
-val: images

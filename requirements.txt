@@ -4,3 +4,5 @@ python-multipart
 opencv-python
 ultralytics
 optuna
+yt-dlp
+imageio-ffmpeg
